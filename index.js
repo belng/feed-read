@@ -67,8 +67,7 @@ FeedRead.get = function(feed_url, callback) {
     } else if (type == "rss") {
       FeedRead.rss(body, feed_url, callback);
     } else {
-      return callback(new Error("Body is not RSS or ATOM", "<"+ feed_url +">", 
-        res.statusCode));
+      return callback(new Error("Body is not RSS or ATOM", "<"+ feed_url +">", res.statusCode));
     }
   });
 };
