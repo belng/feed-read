@@ -132,8 +132,11 @@ FeedRead.atom = function(xml, source, callback) {
       }
     ), function(art) { return !!art; }));
   };
-  
-  parser.write(xml);
+  try {
+    parser.write(xml);
+  } catch (e) {
+    return callback(new Error( "Invalid character entity error"));
+  }
 };
 
 
@@ -188,8 +191,11 @@ FeedRead.rss = function(xml, source, callback) {
       }
     ), function(art) { return !!art; }));
   };
-  
-  parser.write(xml);
+  try {
+    parser.write(xml);
+  } catch (e) {
+    return callback(new Error( "Invalid character entity error"));
+  }
 };
 
 
@@ -216,10 +222,11 @@ var FeedParser = (function() {
     parser.onopentag  = function(tag) { _this.open(tag); };
     parser.onclosetag = function(tag) { _this.close(tag); };
     
-    parser.onerror = function() { this.error = undefined; }
     parser.ontext  = function(text) { _this.ontext(text); };
     parser.oncdata = function(text) { _this.ontext(text); };
     parser.onend   = function() { _this.onend(); };
+    
+    parser.onerror = console.error;
   }
   
   
@@ -293,3 +300,4 @@ function child_data(parent, name) {
   if (!children.length) return "";
   return children.join("");
 }
+
