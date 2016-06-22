@@ -42,9 +42,9 @@ var FeedRead = module.exports = function(feed_url, callback) {
 // 
 // Returns "atom", "rss", or false when it is neither.
 FeedRead.identify = function(xml) {
-  if (/<rss /i.test(xml)) {
+  if (/<(rss|rdf)\b/i.test(xml)) {
     return "rss";
-  } else if (/<feed /i.test(xml)) {
+  } else if (/<feed\b/i.test(xml)) {
     return "atom";
   } else {
     return false;
@@ -59,7 +59,7 @@ FeedRead.identify = function(xml) {
 // callback - Receives `(err, articles)`.
 // 
 FeedRead.get = function(feed_url, callback) {
-  request(feed_url, function(err, res, body) {
+  request(feed_url, {timeout: 5000}, function(err, res, body) {
     if (err) return callback(err);
     var type = FeedRead.identify(body);
     if (type == "atom") {
@@ -67,8 +67,8 @@ FeedRead.get = function(feed_url, callback) {
     } else if (type == "rss") {
       FeedRead.rss(body, feed_url, callback);
     } else {
-      return callback(new Error( "Body is not RSS or ATOM"
-                                , body.substr(0, 30), "..."));
+      return callback(new Error("Body is not RSS or ATOM", "<"+ feed_url +">", 
+        res.statusCode));
     }
   });
 };
@@ -113,14 +113,15 @@ FeedRead.atom = function(xml, source, callback) {
   };
   
   parser.onend = function() {
-    callback(null, _.map(articles,
+    callback(null, _.filter(_.map(articles,
       function(art) {
+        if (!art.children.length) return false;
         var author = child_by_name(art, "author");
         if (author) author = child_data(author, "name");
         
         var obj = {
             title:     child_data(art, "title")
-          , content:   child_data(art, "content")
+          , content:   scrub_html(child_data(art, "content"))
           , published: child_data(art, "published")
                     || child_data(art, "updated")
           , author:    author || default_author
@@ -130,7 +131,7 @@ FeedRead.atom = function(xml, source, callback) {
         if (obj.published) obj.published = new Date(obj.published);
         return obj;
       }
-    ));
+    ), function(art) { return !!art; }));
   };
   try {
     parser.write(xml);
@@ -173,8 +174,9 @@ FeedRead.rss = function(xml, source, callback) {
   };
   
   parser.onend = function() {
-    callback(null, _.map(articles,
+    callback(null, _.filter(_.map(articles,
       function(art) {
+        if (!art.children.length) return false;
         var obj = {
             title:     child_data(art, "title")
           , content:   scrub_html(child_data(art, "content:encoded"))
@@ -188,7 +190,7 @@ FeedRead.rss = function(xml, source, callback) {
         if (obj.published) obj.published = new Date(obj.published);
         return obj;
       }
-    ));
+    ), function(art) { return !!art; }));
   };
   try {
     parser.write(xml);
